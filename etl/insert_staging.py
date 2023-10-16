@@ -26,7 +26,7 @@ def insert_json_files(json_files, insert_query, data_type):
 
 def main():
     folder_paths = {
-        "songs": ["data/song_data/A", "data/song_data/B"],
+        "songs": ["data/song_data/A/A", "data/song_data/A/B", "data/song_data/A/C", "data/song_data/B/A", "data/song_data/B/B", "data/song_data/B/C"],
         "events": ["data/log_data"]
     }
 
