@@ -2,6 +2,7 @@ from config.init import conn, cur
 from etl.sql_queries import insert_staging_songs, insert_staging_events
 import json
 import os
+import string
 
 def collect_json_files(folder_paths):
     json_files = []
@@ -25,9 +26,16 @@ def insert_json_files(json_files, insert_query, data_type):
     print(f"Insert for {data_type} staging")
 
 def main():
+    song_paths = []
+    base_path= "data/sparkify_songs/A/"
+    for first_letter in string.ascii_uppercase:
+            for second_letter in string.ascii_uppercase:
+                    path = base_path + f"{first_letter}/{second_letter}"
+                    song_paths.append(path)
+    
     folder_paths = {
-        "songs": ["data/song_data/A/A", "data/song_data/A/B", "data/song_data/A/C", "data/song_data/B/A", "data/song_data/B/B", "data/song_data/B/C"],
-        "events": ["data/log_data"]
+        "songs": song_paths,
+        "events": ["data/sparkify_events/2018/11"]
     }
 
     json_files_songs = collect_json_files(folder_paths["songs"])
