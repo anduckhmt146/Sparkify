@@ -4,7 +4,7 @@ from decouple import config
 # Define a dictionary with the configuration
 db_config = {
     "database": config("DATABASE"),
-    "user": config("USERNAME"),
+    "user": "postgres",
     "password": config("PASSWORD"),
     "host": config("HOST"),
     "port": config("PORT"),

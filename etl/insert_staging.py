@@ -41,6 +41,8 @@ def main():
     json_files_songs = collect_json_files(folder_paths["songs"])
     json_files_events = collect_json_files(folder_paths["events"])
 
+    
+
     insert_json_files(json_files_songs, insert_staging_songs, "songs")
     insert_json_files(json_files_events, insert_staging_events, "events")
     
