@@ -51,31 +51,46 @@ songplay_table_create = ("""
     CREATE TABLE IF NOT EXISTS songplays (
                 songplay_id SERIAL PRIMARY KEY,
                 start_time  TIMESTAMP               NOT NULL,
-                user_id     VARCHAR(50)             NOT NULL ,
-                level       VARCHAR(10)             NOT NULL,
+                user_id     INTEGER           NOT NULL,
                 song_id     VARCHAR(40)             NOT NULL,
-                artist_id   VARCHAR(50)             NOT NULL,
+                artist_id   VARCHAR(100)             NOT NULL,
+                artist_name   VARCHAR(500)             NOT NULL,
                 session_id  VARCHAR(50)             NOT NULL,
+                length      FLOAT                   NULL,
                 location    VARCHAR(100)            NULL,
-                user_agent  VARCHAR(255)            NULL
+                user_agent  VARCHAR(255)            NULL,
+                    CONSTRAINT fk_user
+                    FOREIGN KEY(user_id) 
+                    REFERENCES users(user_id),
+                         
+                    CONSTRAINT fk_song
+                    FOREIGN KEY(song_id) 
+                    REFERENCES songs(song_id),
+                         
+                    CONSTRAINT fk_artist
+                    FOREIGN KEY(artist_id, artist_name) 
+                    REFERENCES artists(artist_id, name),
+                         
+                    CONSTRAINT fk_time 
+                    FOREIGN KEY (start_time)
+                    REFERENCES time (start_time)
     );
 """)
 
 user_table_create = ("""
     CREATE TABLE IF NOT EXISTS users (
-                user_id     INTEGER                 NOT NULL ,
+                user_id     INTEGER                 PRIMARY KEY,
                 first_name  VARCHAR(50)             NULL,
                 last_name   VARCHAR(80)             NULL,
-                gender      VARCHAR(10)             NULL,
-                level       VARCHAR(10)             NULL
+                gender      VARCHAR(10)             NULL
     ) ;
 """)
 
 song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs (
-                song_id     VARCHAR(50)             NOT NULL ,
+                song_id     VARCHAR(50)             PRIMARY KEY,
                 title       VARCHAR(500)           NOT NULL,
-                artist_id   VARCHAR(50)             NOT NULL,
+                artist_name   VARCHAR(500)             NOT NULL,
                 year        INTEGER                 NOT NULL,
                 duration    DECIMAL(9)              NOT NULL
     );
@@ -83,17 +98,15 @@ song_table_create = ("""
 
 artist_table_create = ("""
     CREATE TABLE IF NOT EXISTS artists (
-                artist_id   VARCHAR(50)             NOT NULL ,
+                artist_id   VARCHAR(50)             NOT NULL,
                 name        VARCHAR(500)           NULL,
-                location    VARCHAR(500)           NULL,
-                latitude    DECIMAL(9)              NULL,
-                longitude   DECIMAL(9)              NULL
+                PRIMARY KEY (artist_id,name)
     );
 """)
 
 time_table_create = ("""
     CREATE TABLE IF NOT EXISTS time (
-                start_time  TIMESTAMP               NOT NULL ,
+                start_time  TIMESTAMP               PRIMARY KEY,
                 hour        SMALLINT                NULL,
                 day         SMALLINT                NULL,
                 week        SMALLINT                NULL,
@@ -128,18 +141,18 @@ insert_staging_events = """
 songplay_table_insert = ("""
     INSERT INTO songplays (             start_time,
                                         user_id,
-                                        level,
                                         song_id,
                                         artist_id,
+                                        artist_name,
                                         session_id,
                                         location,
                                         user_agent)
     SELECT  DISTINCT TIMESTAMP 'epoch' + se.ts/1000 \
                 * INTERVAL '1 second'   AS start_time,
             CAST(se.userId AS INTEGER)  AS user_id,
-            se.level                    AS level,
             ss.song_id                  AS song_id,
-            ss.artist_id                AS artist_id,
+            ss.artist_id                     AS artist_id,
+            ss.artist_name                     AS artist_name,
             se.session_id                AS session_id,
             se.location                 AS location,
             se.userAgent                AS user_agent
@@ -153,26 +166,23 @@ user_table_insert = ("""
     INSERT INTO users (                 user_id,
                                         first_name,
                                         last_name,
-                                        gender,
-                                        level)
-    SELECT  DISTINCT CAST(se.userId AS INTEGER)  AS user_id,
+                                        gender)
+    SELECT  DISTINCT CAST(se.userId AS INTEGER) AS user_id,
             se.firstName                AS first_name,
             se.lastName                 AS last_name,
-            se.gender                   AS gender,
-            se.level                    AS level
-    FROM staging_events AS se
-    WHERE se.page = 'NextSong';
+            se.gender                   AS gender
+    FROM staging_events AS se WHERE se.userId <> '';
 """)
 
 song_table_insert = ("""
     INSERT INTO songs (                 song_id,
                                         title,
-                                        artist_id,
+                                        artist_name,
                                         year,
                                         duration)
     SELECT  DISTINCT ss.song_id         AS song_id,
             ss.title                    AS title,
-            ss.artist_id                AS artist_id,
+            ss.artist_name                AS artist_name,
             ss.year                     AS year,
             ss.duration                 AS duration
     FROM staging_songs AS ss;
@@ -180,16 +190,11 @@ song_table_insert = ("""
 
 artist_table_insert = ("""
     INSERT INTO artists (               artist_id,
-                                        name,
-                                        location,
-                                        latitude,
-                                        longitude)
-    SELECT  DISTINCT ss.artist_id       AS artist_id,
-            ss.artist_name              AS name,
-            ss.artist_location          AS location,
-            CAST(ss.artist_latitude AS REAL)  AS latitude,
-            CAST(ss.artist_longitude AS REAL)  AS longitude
-    FROM staging_songs AS ss;
+                                        name
+                                        )
+    SELECT   ss.artist_id,  ss.artist_name
+    FROM staging_songs AS ss
+    GROUP BY artist_name,   artist_id;    
 """)
 
 time_table_insert = ("""
@@ -207,8 +212,8 @@ time_table_insert = ("""
 """)
 
 # QUERY LISTS
-create_table_queries = [staging_events_table_create,staging_songs_table_create, songplay_table_create, user_table_create, song_table_create,artist_table_create, time_table_create]
+create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, song_table_create,artist_table_create, time_table_create, songplay_table_create]
 
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
 
-insert_table_queries = [songplay_table_insert, user_table_insert, song_table_insert, artist_table_insert, time_table_insert]
+insert_table_queries = [user_table_insert, song_table_insert, artist_table_insert, time_table_insert, songplay_table_insert]
