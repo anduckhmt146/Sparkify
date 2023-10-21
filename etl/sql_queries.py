@@ -92,7 +92,8 @@ song_table_create = ("""
                 title       VARCHAR(500)           NOT NULL,
                 artist_name   VARCHAR(500)             NOT NULL,
                 year        INTEGER                 NOT NULL,
-                duration    DECIMAL(9)              NOT NULL
+                duration    DECIMAL(9)              NOT NULL,
+                location    VARCHAR(500)            NULL
     );
 """)
 
@@ -139,14 +140,14 @@ insert_staging_events = """
 # INSERT FACT AND DIMENSION TABLES
 
 songplay_table_insert = ("""
-    INSERT INTO songplays (             start_time,
-                                        user_id,
-                                        song_id,
-                                        artist_id,
-                                        artist_name,
-                                        session_id,
-                                        location,
-                                        user_agent)
+INSERT INTO songplays ( start_time,
+                        user_id,
+                        song_id,
+                        artist_id,
+                        artist_name,
+                        session_id,
+                        location,
+                        user_agent)
     SELECT  DISTINCT TIMESTAMP 'epoch' + se.ts/1000 \
                 * INTERVAL '1 second'   AS start_time,
             CAST(se.userId AS INTEGER)  AS user_id,
@@ -158,8 +159,7 @@ songplay_table_insert = ("""
             se.userAgent                AS user_agent
     FROM staging_events AS se
     JOIN staging_songs AS ss
-        ON (se.artist = ss.artist_name)
-    WHERE se.page = 'NextSong';
+    ON (se.artist = ss.artist_name);
 """)
 
 user_table_insert = ("""
@@ -171,30 +171,32 @@ user_table_insert = ("""
             se.firstName                AS first_name,
             se.lastName                 AS last_name,
             se.gender                   AS gender
-    FROM staging_events AS se WHERE se.userId <> '';
+    FROM staging_events AS se 
+    WHERE se.userId != '';
 """)
 
 song_table_insert = ("""
-    INSERT INTO songs (                 song_id,
-                                        title,
-                                        artist_name,
-                                        year,
-                                        duration)
+    INSERT INTO songs ( song_id,
+                        title,
+                        artist_name,
+                        year,
+                        duration,
+                        location)
     SELECT  DISTINCT ss.song_id         AS song_id,
             ss.title                    AS title,
-            ss.artist_name                AS artist_name,
+            ss.artist_name              AS artist_name,
             ss.year                     AS year,
-            ss.duration                 AS duration
+            ss.duration                 AS duration,
+            ss.artist_location          AS location
     FROM staging_songs AS ss;
 """)
 
 artist_table_insert = ("""
-    INSERT INTO artists (               artist_id,
-                                        name
-                                        )
+    INSERT INTO artists (artist_id,
+                        name)
     SELECT   ss.artist_id,  ss.artist_name
     FROM staging_songs AS ss
-    GROUP BY artist_name,   artist_id;    
+    GROUP BY artist_name, artist_id;    
 """)
 
 time_table_insert = ("""
@@ -207,10 +209,26 @@ time_table_insert = ("""
         EXTRACT(month FROM TIMESTAMP 'epoch' + se.ts/1000 * INTERVAL '1 second') AS month,
         EXTRACT(year FROM TIMESTAMP 'epoch' + se.ts/1000 * INTERVAL '1 second') AS year,
         EXTRACT(week FROM TIMESTAMP 'epoch' + se.ts/1000 * INTERVAL '1 second') AS weekday
-    FROM staging_events AS se
-    WHERE se.page = 'NextSong';
+    FROM staging_events AS se;
 """)
 
+fill_location_with_other=("""
+    UPDATE songs
+    SET location = 'Other'
+    WHERE location IS NULL OR location = '';
+""")
+fill_year_with_average=("""
+    CREATE OR REPLACE PROCEDURE transform_staging_songs()
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+        UPDATE songs
+        SET year = (SELECT CAST(AVG(songs.year) AS INTEGER) FROM songs WHERE songs.artist_name = artist_name AND year != 0)
+        WHERE year = 0;
+    END;
+    $$;
+    CALL transform_staging_songs();
+""")
 # QUERY LISTS
 create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, song_table_create,artist_table_create, time_table_create, songplay_table_create]
 

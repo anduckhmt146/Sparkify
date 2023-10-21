@@ -9,9 +9,8 @@ def insert_tables(cur, conn):
             cur.execute(query)
             conn.commit()
         except psycopg2.Error as e:
-            print(query)
+            print("Error: Issue creating table: " + query)
             print(e)
-            break
     print('INSERT ALL TABLES SUCCESSFULLY')
 
 def main():
