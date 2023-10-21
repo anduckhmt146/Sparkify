@@ -146,15 +146,17 @@ INSERT INTO songplays ( start_time,
                         artist_id,
                         artist_name,
                         session_id,
+                        length,
                         location,
                         user_agent)
     SELECT  DISTINCT TIMESTAMP 'epoch' + se.ts/1000 \
                 * INTERVAL '1 second'   AS start_time,
             CAST(se.userId AS INTEGER)  AS user_id,
             ss.song_id                  AS song_id,
-            ss.artist_id                     AS artist_id,
-            ss.artist_name                     AS artist_name,
-            se.session_id                AS session_id,
+            ss.artist_id                AS artist_id,
+            ss.artist_name              AS artist_name,
+            se.session_id               AS session_id,
+            CAST(se.length as FLOAT)    AS length,            
             se.location                 AS location,
             se.userAgent                AS user_agent
     FROM staging_events AS se
@@ -218,7 +220,7 @@ fill_location_with_other=("""
     WHERE location IS NULL OR location = '';
 """)
 fill_year_with_average=("""
-    CREATE OR REPLACE PROCEDURE transform_staging_songs()
+    CREATE OR REPLACE PROCEDURE fill_year_with_average()
     LANGUAGE plpgsql
     AS $$
     BEGIN
@@ -227,7 +229,7 @@ fill_year_with_average=("""
         WHERE year = 0;
     END;
     $$;
-    CALL transform_staging_songs();
+    CALL fill_year_with_average();
 """)
 # QUERY LISTS
 create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, song_table_create,artist_table_create, time_table_create, songplay_table_create]
@@ -236,4 +238,4 @@ drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songp
 
 insert_table_queries = [user_table_insert, song_table_insert, artist_table_insert, time_table_insert, songplay_table_insert]
 
-preprocessing = [fill_location_with_other, fill_year_with_average]
+pre_processing = [fill_location_with_other, fill_year_with_average]

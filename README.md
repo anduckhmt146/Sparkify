@@ -24,7 +24,9 @@ pip install python-decouple
 python main.py
 ```
 
----
+## Star Schema
+
+## ![Star Schema](image/Star_Schema.png)
 
 ## Overview
 
