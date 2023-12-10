@@ -53,8 +53,6 @@ songplay_table_create = ("""
                 start_time  TIMESTAMP               NOT NULL,
                 user_id     INTEGER           NOT NULL,
                 song_id     VARCHAR(40)             NOT NULL,
-                artist_id   VARCHAR(100)             NOT NULL,
-                artist_name   VARCHAR(500)             NOT NULL,
                 session_id  VARCHAR(50)             NOT NULL,
                 length      FLOAT                   NULL,
                 location    VARCHAR(100)            NULL,
@@ -66,10 +64,7 @@ songplay_table_create = ("""
                     CONSTRAINT fk_song
                     FOREIGN KEY(song_id) 
                     REFERENCES songs(song_id),
-                         
-                    CONSTRAINT fk_artist
-                    FOREIGN KEY(artist_id, artist_name) 
-                    REFERENCES artists(artist_id, name),
+                        
                          
                     CONSTRAINT fk_time 
                     FOREIGN KEY (start_time)
@@ -90,10 +85,14 @@ song_table_create = ("""
     CREATE TABLE IF NOT EXISTS songs (
                 song_id     VARCHAR(50)             PRIMARY KEY,
                 title       VARCHAR(500)           NOT NULL,
+                artist_id           VARCHAR         NOT NULL,
                 artist_name   VARCHAR(500)             NOT NULL,
                 year        INTEGER                 NOT NULL,
                 duration    DECIMAL(9)              NOT NULL,
-                location    VARCHAR(500)            NULL
+                location    VARCHAR(500)            NULL,
+                CONSTRAINT fk_artist
+                    FOREIGN KEY(artist_id, artist_name) 
+                    REFERENCES artists(artist_id, name)
     );
 """)
 
@@ -143,8 +142,6 @@ songplay_table_insert = ("""
 INSERT INTO songplays ( start_time,
                         user_id,
                         song_id,
-                        artist_id,
-                        artist_name,
                         session_id,
                         length,
                         location,
@@ -153,15 +150,13 @@ INSERT INTO songplays ( start_time,
                 * INTERVAL '1 second'   AS start_time,
             CAST(se.userId AS INTEGER)  AS user_id,
             ss.song_id                  AS song_id,
-            ss.artist_id                AS artist_id,
-            ss.artist_name              AS artist_name,
             se.session_id               AS session_id,
             CAST(se.length as FLOAT)    AS length,            
             se.location                 AS location,
             se.userAgent                AS user_agent
     FROM staging_events AS se
     JOIN staging_songs AS ss
-    ON (se.artist = ss.artist_name);
+    ON (se.artist = ss.artist_name and se.song=ss.title);
 """)
 
 user_table_insert = ("""
@@ -180,12 +175,14 @@ user_table_insert = ("""
 song_table_insert = ("""
     INSERT INTO songs ( song_id,
                         title,
+                        artist_id,
                         artist_name,
                         year,
                         duration,
                         location)
     SELECT  DISTINCT ss.song_id         AS song_id,
             ss.title                    AS title,
+            ss.artist_id                AS artist_id,
             ss.artist_name              AS artist_name,
             ss.year                     AS year,
             ss.duration                 AS duration,
@@ -232,10 +229,10 @@ fill_year_with_average=("""
     CALL fill_year_with_average();
 """)
 # QUERY LISTS
-create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, song_table_create,artist_table_create, time_table_create, songplay_table_create]
+create_table_queries = [staging_events_table_create, staging_songs_table_create, user_table_create, artist_table_create, song_table_create, time_table_create, songplay_table_create]
 
-drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop, song_table_drop, artist_table_drop, time_table_drop]
+drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop,  song_table_drop, artist_table_drop, time_table_drop]
 
-insert_table_queries = [user_table_insert, song_table_insert, artist_table_insert, time_table_insert, songplay_table_insert]
+insert_table_queries = [user_table_insert,  artist_table_insert, song_table_insert, time_table_insert, songplay_table_insert]
 
 pre_processing = [fill_location_with_other, fill_year_with_average]
