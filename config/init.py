@@ -9,7 +9,6 @@ db_config = {
     "host": config("HOST"),
     "port": config("PORT"),
 }
-
 # Establish a database connection
 conn = psycopg2.connect(**db_config)
 cur = conn.cursor()
