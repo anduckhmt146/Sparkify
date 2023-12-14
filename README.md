@@ -24,10 +24,6 @@ pip install python-decouple
 python main.py
 ```
 
-## Star Schema
-
-## ![Star Schema](image/Star_Schema.png)
-
 ## Overview
 
 This Project-3 handles data of a music streaming startup, Sparkify. Data set is a set of files in JSON format stored in AWS S3 buckets and contains two parts:
